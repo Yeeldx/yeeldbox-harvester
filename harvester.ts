@@ -88,7 +88,7 @@ async function main() {
     }
   }
 
-  while (true) {
+  while (false) {
     const starting_balance = await web3.eth.getBalance(bot.address);
 
     let calls_made = 0;
