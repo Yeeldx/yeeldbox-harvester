@@ -2,6 +2,8 @@ const StrategyABI = require("./abi/Strategy.json");
 const VaultABI = require("./abi/Vault.json");
 const TokenABI = require("./abi/Token.json");
 
+var cron = require("node-cron");
+
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -50,6 +52,7 @@ const getSignedTx = async (to, tx, sender, privateKey, gasPrice, value = 0) => {
 };
 
 const pvtKey = process.env.BOT_PVT_KEY;
+const isHarvesting: boolean = process.env.HARVEST === "true";
 
 async function main() {
   const chainId = await web3.eth.getChainId();
@@ -88,7 +91,7 @@ async function main() {
     }
   }
 
-  while (false) {
+  while (isHarvesting) {
     const starting_balance = await web3.eth.getBalance(bot.address);
 
     let calls_made = 0;
@@ -232,19 +235,19 @@ async function main() {
         `At this rate, it'll take ${num_harvests} harvests to run out of gas.`
       );
 
-      console.log("Sleeping for 12 hours...");
       console.log("\n");
-      console.log("\n");
-      console.log("\n");
-      await sleep(43200);
     } else {
       console.log("Sleeping for 60 seconds...");
       console.log("\n");
-      console.log("\n");
-      console.log("\n");
+
       await sleep(60);
     }
   }
 }
 
-main();
+/** Runs “At minute 59 past every 12th hour.”
+ * (00:59:00,12:59:00, 00:59:00)
+ */
+cron.schedule("59 */12 * * *", () => {
+  main();
+});
