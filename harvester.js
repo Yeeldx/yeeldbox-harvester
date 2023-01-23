@@ -89,10 +89,16 @@ var getSignedTx = function (to, tx, sender, privateKey, gasPrice, value) {
     });
 };
 var pvtKey = process.env.BOT_PVT_KEY;
-var isHarvesting = process.env.HARVEST === "true";
+var getHarvesterFlags = function () { return __awaiter(_this, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2 /*return*/, fetch('https://yeeldx.github.io/data/harvester.json', {
+                method: 'GET'
+            }).then(function (response) { return response.json(); })];
+    });
+}); };
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var chainId, bot, strategies, vault, _a, _b, _c, want, _d, _e, _f, _i, strategies_1, strategy, keeper, vaultAddress, starting_balance, calls_made, total_gas_estimate, starting_gas_price, _g, strategies_2, strategy, strategyInstance, vaultInstance, vaultDecimals, symbol, credit, debt, tend_gas_estimate, gasPrice, err_1, harvest_gas_estimate, gasPrice, err_2, harvestCallCost, harvestTrigger, tendCallCost, tendTrigger, the_tx, err_3, the_tx, err_4, botBalance, gas_cost, num_harvests;
+        var chainId, bot, strategies, vault, _a, _b, _c, want, _d, _e, _f, _i, strategies_1, strategy, keeper, vaultAddress, harvesterFlags, isHarvestEnabled, starting_balance, calls_made, total_gas_estimate, starting_gas_price, _g, strategies_2, strategy, strategyInstance, vaultInstance, vaultDecimals, symbol, credit, debt, tend_gas_estimate, gasPrice, err_1, harvest_gas_estimate, gasPrice, err_2, harvestCallCost, harvestTrigger, tendCallCost, tendTrigger, the_tx, err_3, the_tx, err_4, botBalance, gas_cost, num_harvests;
         return __generator(this, function (_h) {
             switch (_h.label) {
                 case 0: return [4 /*yield*/, web3.eth.getChainId()];
@@ -134,161 +140,164 @@ function main() {
                 case 7:
                     _i++;
                     return [3 /*break*/, 4];
-                case 8:
-                    if (!isHarvesting) return [3 /*break*/, 42];
-                    return [4 /*yield*/, web3.eth.getBalance(bot.address)];
+                case 8: return [4 /*yield*/, getHarvesterFlags()];
                 case 9:
+                    harvesterFlags = _h.sent();
+                    isHarvestEnabled = harvesterFlags.harvest;
+                    console.log("is Harvest enabled: ", isHarvestEnabled);
+                    if (!isHarvestEnabled) return [3 /*break*/, 40];
+                    return [4 /*yield*/, web3.eth.getBalance(bot.address)];
+                case 10:
                     starting_balance = _h.sent();
                     calls_made = 0;
                     total_gas_estimate = 0;
                     starting_gas_price = 0;
                     _g = 0, strategies_2 = strategies;
-                    _h.label = 10;
-                case 10:
-                    if (!(_g < strategies_2.length)) return [3 /*break*/, 37];
+                    _h.label = 11;
+                case 11:
+                    if (!(_g < strategies_2.length)) return [3 /*break*/, 38];
                     strategy = strategies_2[_g];
                     strategyInstance = strategy.methods;
                     vaultInstance = vault.methods;
                     return [4 /*yield*/, vaultInstance.decimals().call()];
-                case 11:
+                case 12:
                     vaultDecimals = _h.sent();
                     return [4 /*yield*/, want.methods.symbol().call()];
-                case 12:
+                case 13:
                     symbol = _h.sent();
                     return [4 /*yield*/, vaultInstance.creditAvailable(strategy.options.address).call()];
-                case 13:
+                case 14:
                     credit = (_h.sent()) /
                         Math.pow(10, vaultDecimals);
                     console.log("[".concat(strategy.options.address, "] Credit Available: ").concat(credit.toFixed(6), " ").concat(symbol));
                     return [4 /*yield*/, vaultInstance.debtOutstanding(strategy.options.address).call()];
-                case 14:
+                case 15:
                     debt = (_h.sent()) /
                         Math.pow(10, vaultDecimals);
                     console.log("[".concat(strategy.options.address, "] Debt Outstanding: ").concat(debt.toFixed(6), " ").concat(symbol));
                     console.log("***** Estimating Tend ******");
                     return [4 /*yield*/, web3.eth.getGasPrice()];
-                case 15:
+                case 16:
                     starting_gas_price = _h.sent();
                     console.log("starting_gas_price: ", starting_gas_price);
                     tend_gas_estimate = void 0;
-                    _h.label = 16;
-                case 16:
-                    _h.trys.push([16, 18, , 19]);
-                    return [4 /*yield*/, estimateGas(strategyInstance.tend(), bot.address)];
+                    _h.label = 17;
                 case 17:
+                    _h.trys.push([17, 19, , 20]);
+                    return [4 /*yield*/, estimateGas(strategyInstance.tend(), bot.address)];
+                case 18:
                     gasPrice = (_h.sent())[0];
                     console.log("tend gasPrice: ", gasPrice);
                     tend_gas_estimate = Math.floor(GAS_BUFFER * gasPrice);
                     total_gas_estimate += tend_gas_estimate;
                     console.log("tend_gas_estimate: ", tend_gas_estimate);
                     console.log("total_gas_estimate: ", total_gas_estimate);
-                    return [3 /*break*/, 19];
-                case 18:
+                    return [3 /*break*/, 20];
+                case 19:
                     err_1 = _h.sent();
                     console.log("[".concat(strategy.options.address, "] `tend` estimate fails : ").concat(err_1));
-                    return [3 /*break*/, 19];
-                case 19:
+                    return [3 /*break*/, 20];
+                case 20:
                     console.log("***** Estimating Harvest ******");
                     harvest_gas_estimate = 0;
-                    _h.label = 20;
-                case 20:
-                    _h.trys.push([20, 22, , 23]);
-                    return [4 /*yield*/, estimateGas(strategyInstance.harvest(), bot.address)];
+                    _h.label = 21;
                 case 21:
+                    _h.trys.push([21, 23, , 24]);
+                    return [4 /*yield*/, estimateGas(strategyInstance.harvest(), bot.address)];
+                case 22:
                     gasPrice = (_h.sent())[0];
                     console.log("harvest gasPrice: ", gasPrice);
                     harvest_gas_estimate = GAS_BUFFER * gasPrice;
                     total_gas_estimate += harvest_gas_estimate;
                     console.log("harvest_gas_estimate: ", harvest_gas_estimate);
                     console.log("total_gas_estimate: ", total_gas_estimate);
-                    return [3 /*break*/, 23];
-                case 22:
+                    return [3 /*break*/, 24];
+                case 23:
                     err_2 = _h.sent();
                     console.log("[".concat(strategy.options.address, "] `harvest` estimate fails : ").concat(err_2));
-                    return [3 /*break*/, 23];
-                case 23:
+                    return [3 /*break*/, 24];
+                case 24:
                     harvestCallCost = harvest_gas_estimate * starting_gas_price;
                     console.log("harvestCallCost ", harvestCallCost);
                     return [4 /*yield*/, strategyInstance
                             .harvestTrigger(harvestCallCost.toString())
                             .call()];
-                case 24:
+                case 25:
                     harvestTrigger = _h.sent();
                     console.log("harvestTrigger: ", harvestTrigger);
                     tendCallCost = tend_gas_estimate * starting_gas_price;
                     return [4 /*yield*/, strategyInstance
                             .tendTrigger(tendCallCost.toString())
                             .call()];
-                case 25:
-                    tendTrigger = _h.sent();
-                    if (!(harvest_gas_estimate > 0 && harvestTrigger)) return [3 /*break*/, 31];
-                    _h.label = 26;
                 case 26:
-                    _h.trys.push([26, 29, , 30]);
-                    return [4 /*yield*/, getSignedTx(strategy.options.address, strategyInstance.harvest(), bot, pvtKey, starting_gas_price)];
+                    tendTrigger = _h.sent();
+                    if (!(harvest_gas_estimate > 0 && harvestTrigger)) return [3 /*break*/, 32];
+                    _h.label = 27;
                 case 27:
+                    _h.trys.push([27, 30, , 31]);
+                    return [4 /*yield*/, getSignedTx(strategy.options.address, strategyInstance.harvest(), bot, pvtKey, starting_gas_price)];
+                case 28:
                     the_tx = _h.sent();
                     return [4 /*yield*/, web3.eth.sendSignedTransaction(the_tx.rawTransaction)];
-                case 28:
+                case 29:
                     _h.sent();
                     calls_made += 1;
                     console.log(" Harvest Triggered ");
-                    return [3 /*break*/, 30];
-                case 29:
+                    return [3 /*break*/, 31];
+                case 30:
                     err_3 = _h.sent();
                     console.log("[".concat(strategy.options.address, "] `harvest` call fails ").concat(err_3));
-                    return [3 /*break*/, 30];
-                case 30: return [3 /*break*/, 36];
-                case 31:
-                    if (!(tend_gas_estimate && tendTrigger)) return [3 /*break*/, 36];
-                    _h.label = 32;
+                    return [3 /*break*/, 31];
+                case 31: return [3 /*break*/, 37];
                 case 32:
-                    _h.trys.push([32, 35, , 36]);
-                    return [4 /*yield*/, getSignedTx(strategy.options.address, strategyInstance.tend(), bot, pvtKey, starting_gas_price)];
+                    if (!(tend_gas_estimate && tendTrigger)) return [3 /*break*/, 37];
+                    _h.label = 33;
                 case 33:
+                    _h.trys.push([33, 36, , 37]);
+                    return [4 /*yield*/, getSignedTx(strategy.options.address, strategyInstance.tend(), bot, pvtKey, starting_gas_price)];
+                case 34:
                     the_tx = _h.sent();
                     return [4 /*yield*/, web3.eth.sendSignedTransaction(the_tx.rawTransaction)];
-                case 34:
+                case 35:
                     _h.sent();
                     calls_made += 1;
                     console.log(" Tend Triggered ");
-                    return [3 /*break*/, 36];
-                case 35:
+                    return [3 /*break*/, 37];
+                case 36:
                     err_4 = _h.sent();
                     console.log("[".concat(strategy.options.address, "] `tend` call fails ").concat(err_4));
-                    return [3 /*break*/, 36];
-                case 36:
+                    return [3 /*break*/, 37];
+                case 37:
                     _g++;
-                    return [3 /*break*/, 10];
-                case 37: return [4 /*yield*/, web3.eth.getBalance(bot.address)];
-                case 38:
+                    return [3 /*break*/, 11];
+                case 38: return [4 /*yield*/, web3.eth.getBalance(bot.address)];
+                case 39:
                     botBalance = _h.sent();
                     if (botBalance < 10 * total_gas_estimate * starting_gas_price) {
                         console.log("Need more ether please! ".concat(bot.address));
                     }
-                    if (!(calls_made > 0)) return [3 /*break*/, 39];
-                    gas_cost = (starting_balance - botBalance) / Math.pow(10, 18);
-                    num_harvests = Math.floor(botBalance / (starting_balance - botBalance));
-                    console.log("Made ".concat(calls_made, " calls, spent ").concat(gas_cost.toFixed(18), " ETH on gas."));
-                    console.log("At this rate, it'll take ".concat(num_harvests, " harvests to run out of gas."));
-                    console.log("\n");
-                    return [3 /*break*/, 41];
-                case 39:
-                    console.log("Sleeping for 60 seconds...");
-                    console.log("\n");
-                    return [4 /*yield*/, sleep(60)];
-                case 40:
-                    _h.sent();
-                    _h.label = 41;
-                case 41: return [3 /*break*/, 8];
-                case 42: return [2 /*return*/];
+                    // Wait a minute if we didn't make any calls
+                    if (calls_made > 0) {
+                        gas_cost = (starting_balance - botBalance) / Math.pow(10, 18);
+                        num_harvests = Math.floor(botBalance / (starting_balance - botBalance));
+                        console.log("Made ".concat(calls_made, " calls, spent ").concat(gas_cost.toFixed(18), " ETH on gas."));
+                        console.log("At this rate, it'll take ".concat(num_harvests, " harvests to run out of gas."));
+                        console.log("\n");
+                    }
+                    else {
+                        console.log("We didn't make any calls");
+                        console.log("\n");
+                    }
+                    _h.label = 40;
+                case 40: return [2 /*return*/];
             }
         });
     });
 }
+main();
 /** Runs “At minute 59 past every 12th hour.”
  * (00:59:00,12:59:00, 00:59:00)
  */
-cron.schedule("59 */12 * * *", function () {
-    main();
-});
+// cron.schedule("59 */12 * * *", () => {
+//   main();
+// });

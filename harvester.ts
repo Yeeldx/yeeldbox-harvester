@@ -52,7 +52,12 @@ const getSignedTx = async (to, tx, sender, privateKey, gasPrice, value = 0) => {
 };
 
 const pvtKey = process.env.BOT_PVT_KEY;
-const isHarvesting: boolean = process.env.HARVEST === "true";
+
+const getHarvesterFlags = async () => {
+  return fetch('https://yeeldx.github.io/data/harvester.json', {
+    method: 'GET'
+  }).then((response)=> response.json())
+}
 
 async function main() {
   const chainId = await web3.eth.getChainId();
@@ -91,7 +96,11 @@ async function main() {
     }
   }
 
-  while (isHarvesting) {
+  const harvesterFlags = await getHarvesterFlags();
+  const isHarvestEnabled: boolean = harvesterFlags.harvest;
+  console.log("is Harvest enabled: ", isHarvestEnabled)
+
+  if (isHarvestEnabled) {
     const starting_balance = await web3.eth.getBalance(bot.address);
 
     let calls_made = 0;
@@ -237,10 +246,9 @@ async function main() {
 
       console.log("\n");
     } else {
-      console.log("Sleeping for 60 seconds...");
+      console.log("We didn't make any calls");
       console.log("\n");
 
-      await sleep(60);
     }
   }
 }
