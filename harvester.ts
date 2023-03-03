@@ -1,6 +1,7 @@
 const StrategyABI = require("./abi/Strategy.json");
 const VaultABI = require("./abi/Vault.json");
 const TokenABI = require("./abi/Token.json");
+const log = require('log-to-file');
 
 var cron = require("node-cron");
 
@@ -8,8 +9,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const Web3 = require("web3");
-const provider = new Web3.providers.WebsocketProvider(process.env.WSS_RPC_URL);
-const web3 = new Web3(provider);
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.WSS_RPC_URL));
 
 const GAS_BUFFER = 1.2;
 
@@ -61,11 +61,11 @@ const getHarvesterFlags = async () => {
 
 async function main() {
   const chainId = await web3.eth.getChainId();
-  console.log(`You are using the '${chainId}' network`);
+  log(`You are using the '${chainId}' network`);
 
   const bot = web3.eth.accounts.privateKeyToAccount(pvtKey);
 
-  console.log(`You are using: 'bot' [${bot.address}]`);
+  log(`You are using: 'bot' [${bot.address}]`,'harvestor-logs.log');
 
   let strategies = getStrategies(strategyAddresses);
   /*// TODO: Allow adding/removing strategies during operation
@@ -86,7 +86,7 @@ async function main() {
     let keeper = await strategy.methods.keeper().call();
     let vaultAddress = await strategy.methods.vault().call();
 
-    console.log("keeper : ", keeper);
+    log("keeper : " + keeper);
     if (keeper !== bot.address) {
       throw new Error(`Bot is not set as keeper! [${strategy.address}]`);
     }
@@ -98,7 +98,7 @@ async function main() {
 
   const harvesterFlags = await getHarvesterFlags();
   const isHarvestEnabled: boolean = harvesterFlags.harvest;
-  console.log("is Harvest enabled: ", isHarvestEnabled)
+  log("is Harvest enabled: " + isHarvestEnabled)
 
   if (isHarvestEnabled) {
     const starting_balance = await web3.eth.getBalance(bot.address);
@@ -116,7 +116,7 @@ async function main() {
       const credit =
         (await vaultInstance.creditAvailable(strategy.options.address).call()) /
         10 ** vaultDecimals;
-      console.log(
+      log(
         `[${strategy.options.address}] Credit Available: ${credit.toFixed(
           6
         )} ${symbol}`
@@ -124,16 +124,16 @@ async function main() {
       const debt =
         (await vaultInstance.debtOutstanding(strategy.options.address).call()) /
         10 ** vaultDecimals;
-      console.log(
+      log(
         `[${strategy.options.address}] Debt Outstanding: ${debt.toFixed(
           6
         )} ${symbol}`
       );
 
-      console.log("***** Estimating Tend ******");
+      log("***** Estimating Tend ******");
 
       starting_gas_price = await web3.eth.getGasPrice();
-      console.log("starting_gas_price: ", starting_gas_price);
+      log("starting_gas_price: "+ starting_gas_price);
 
       let tend_gas_estimate;
       try {
@@ -141,19 +141,19 @@ async function main() {
           strategyInstance.tend(),
           bot.address
         );
-        console.log("tend gasPrice: ", gasPrice);
+        log("tend gasPrice: "+ gasPrice);
         tend_gas_estimate = Math.floor(GAS_BUFFER * gasPrice);
         total_gas_estimate += tend_gas_estimate;
 
-        console.log("tend_gas_estimate: ", tend_gas_estimate);
-        console.log("total_gas_estimate: ", total_gas_estimate);
+        log("tend_gas_estimate: "+ tend_gas_estimate);
+        log("total_gas_estimate: "+ total_gas_estimate);
       } catch (err) {
-        console.log(
+        log(
           `[${strategy.options.address}] \`tend\` estimate fails : ${err}`
         );
       }
 
-      console.log("***** Estimating Harvest ******");
+      log("***** Estimating Harvest ******");
 
       let harvest_gas_estimate: number = 0;
       try {
@@ -161,24 +161,24 @@ async function main() {
           strategyInstance.harvest(),
           bot.address
         );
-        console.log("harvest gasPrice: ", gasPrice);
+        log("harvest gasPrice: "+ gasPrice);
         harvest_gas_estimate = GAS_BUFFER * gasPrice;
         total_gas_estimate += harvest_gas_estimate;
 
-        console.log("harvest_gas_estimate: ", harvest_gas_estimate);
-        console.log("total_gas_estimate: ", total_gas_estimate);
+        log("harvest_gas_estimate: "+ harvest_gas_estimate);
+        log("total_gas_estimate: "+ total_gas_estimate);
       } catch (err) {
-        console.log(
+        log(
           `[${strategy.options.address}] \`harvest\` estimate fails : ${err}`
         );
       }
 
       const harvestCallCost = harvest_gas_estimate * starting_gas_price;
-      console.log("harvestCallCost ", harvestCallCost);
+      log("harvestCallCost "+ harvestCallCost);
       let harvestTrigger = await strategyInstance
         .harvestTrigger(harvestCallCost.toString())
         .call();
-      console.log("harvestTrigger: ", harvestTrigger);
+      log("harvestTrigger: "+ harvestTrigger);
 
       const tendCallCost = tend_gas_estimate * starting_gas_price;
       const tendTrigger = await strategyInstance
@@ -196,9 +196,9 @@ async function main() {
           await web3.eth.sendSignedTransaction(the_tx.rawTransaction);
           calls_made += 1;
 
-          console.log(" Harvest Triggered ");
+          log(" Harvest Triggered ");
         } catch (err) {
-          console.log(
+          log(
             `[${strategy.options.address}] \`harvest\` call fails ${err}`
           );
         }
@@ -214,9 +214,9 @@ async function main() {
           await web3.eth.sendSignedTransaction(the_tx.rawTransaction);
           calls_made += 1;
 
-          console.log(" Tend Triggered ");
+          log(" Tend Triggered ");
         } catch (err) {
-          console.log(
+          log(
             `[${strategy.options.address}] \`tend\` call fails ${err}`
           );
         }
@@ -227,7 +227,7 @@ async function main() {
     // would empty the balance of the bot account
     let botBalance = await web3.eth.getBalance(bot.address);
     if (botBalance < 10 * total_gas_estimate * starting_gas_price) {
-      console.log(`Need more ether please! ${bot.address}`);
+      log(`Need more ether please! ${bot.address}`);
     }
 
     // Wait a minute if we didn't make any calls
@@ -237,25 +237,26 @@ async function main() {
       const num_harvests = Math.floor(
         botBalance / (starting_balance - botBalance)
       );
-      console.log(
+      log(
         `Made ${calls_made} calls, spent ${gas_cost.toFixed(18)} ETH on gas.`
       );
-      console.log(
+      log(
         `At this rate, it'll take ${num_harvests} harvests to run out of gas.`
       );
 
-      console.log("\n");
+      log("\n");
     } else {
-      console.log("We didn't make any calls");
-      console.log("\n");
+      log("We didn't make any calls");
+      log("\n");
 
     }
   }
 }
 
-/** Runs “At minute 59 past every 12th hour.”
- * (00:59:00,12:59:00, 00:59:00)
+/** Runs “At minute 0 past every 6th hour.”
+ * (06:00:00,12:00:00, 18:00:00)
  */
-cron.schedule("59 */12 * * *", () => {
+cron.schedule("0 */6 * * *", () => {
+  log("Harvestor process started");
   main();
 });

@@ -38,12 +38,12 @@ var _this = this;
 var StrategyABI = require("./abi/Strategy.json");
 var VaultABI = require("./abi/Vault.json");
 var TokenABI = require("./abi/Token.json");
+var log = require('log-to-file');
 var cron = require("node-cron");
 var dotenv = require("dotenv");
 dotenv.config();
 var Web3 = require("web3");
-var provider = new Web3.providers.WebsocketProvider(process.env.WSS_RPC_URL);
-var web3 = new Web3(provider);
+var web3 = new Web3(new Web3.providers.HttpProvider(process.env.WSS_RPC_URL));
 var GAS_BUFFER = 1.2;
 var strategyAddresses = [
     "0xc4d80C55dc12FF0f2b8680eC31A6ADC4cbC8Dfca",
@@ -104,9 +104,9 @@ function main() {
                 case 0: return [4 /*yield*/, web3.eth.getChainId()];
                 case 1:
                     chainId = _h.sent();
-                    console.log("You are using the '".concat(chainId, "' network"));
+                    log("You are using the '".concat(chainId, "' network"), 'harvestor-logs.log');
                     bot = web3.eth.accounts.privateKeyToAccount(pvtKey);
-                    console.log("You are using: 'bot' [".concat(bot.address, "]"));
+                    log("You are using: 'bot' [".concat(bot.address, "]"), 'harvestor-logs.log');
                     strategies = getStrategies(strategyAddresses);
                     _b = (_a = web3.eth.Contract).bind;
                     _c = [void 0, VaultABI];
@@ -129,7 +129,7 @@ function main() {
                     return [4 /*yield*/, strategy.methods.vault().call()];
                 case 6:
                     vaultAddress = _h.sent();
-                    console.log("keeper : ", keeper);
+                    log("keeper : " + keeper, 'harvestor-logs.log');
                     if (keeper !== bot.address) {
                         throw new Error("Bot is not set as keeper! [".concat(strategy.address, "]"));
                     }
@@ -144,7 +144,7 @@ function main() {
                 case 9:
                     harvesterFlags = _h.sent();
                     isHarvestEnabled = harvesterFlags.harvest;
-                    console.log("is Harvest enabled: ", isHarvestEnabled);
+                    log("is Harvest enabled: " + isHarvestEnabled, 'harvestor-logs.log');
                     if (!isHarvestEnabled) return [3 /*break*/, 40];
                     return [4 /*yield*/, web3.eth.getBalance(bot.address)];
                 case 10:
@@ -169,17 +169,17 @@ function main() {
                 case 14:
                     credit = (_h.sent()) /
                         Math.pow(10, vaultDecimals);
-                    console.log("[".concat(strategy.options.address, "] Credit Available: ").concat(credit.toFixed(6), " ").concat(symbol));
+                    log("[".concat(strategy.options.address, "] Credit Available: ").concat(credit.toFixed(6), " ").concat(symbol), 'harvestor-logs.log');
                     return [4 /*yield*/, vaultInstance.debtOutstanding(strategy.options.address).call()];
                 case 15:
                     debt = (_h.sent()) /
                         Math.pow(10, vaultDecimals);
-                    console.log("[".concat(strategy.options.address, "] Debt Outstanding: ").concat(debt.toFixed(6), " ").concat(symbol));
-                    console.log("***** Estimating Tend ******");
+                    log("[".concat(strategy.options.address, "] Debt Outstanding: ").concat(debt.toFixed(6), " ").concat(symbol), 'harvestor-logs.log');
+                    log("***** Estimating Tend ******", 'harvestor-logs.log');
                     return [4 /*yield*/, web3.eth.getGasPrice()];
                 case 16:
                     starting_gas_price = _h.sent();
-                    console.log("starting_gas_price: ", starting_gas_price);
+                    log("starting_gas_price: " + starting_gas_price, 'harvestor-logs.log');
                     tend_gas_estimate = void 0;
                     _h.label = 17;
                 case 17:
@@ -187,18 +187,18 @@ function main() {
                     return [4 /*yield*/, estimateGas(strategyInstance.tend(), bot.address)];
                 case 18:
                     gasPrice = (_h.sent())[0];
-                    console.log("tend gasPrice: ", gasPrice);
+                    log("tend gasPrice: " + gasPrice, 'harvestor-logs.log');
                     tend_gas_estimate = Math.floor(GAS_BUFFER * gasPrice);
                     total_gas_estimate += tend_gas_estimate;
-                    console.log("tend_gas_estimate: ", tend_gas_estimate);
-                    console.log("total_gas_estimate: ", total_gas_estimate);
+                    log("tend_gas_estimate: " + tend_gas_estimate, 'harvestor-logs.log');
+                    log("total_gas_estimate: " + total_gas_estimate, 'harvestor-logs.log');
                     return [3 /*break*/, 20];
                 case 19:
                     err_1 = _h.sent();
-                    console.log("[".concat(strategy.options.address, "] `tend` estimate fails : ").concat(err_1));
+                    log("[".concat(strategy.options.address, "] `tend` estimate fails : ").concat(err_1), 'harvestor-logs.log');
                     return [3 /*break*/, 20];
                 case 20:
-                    console.log("***** Estimating Harvest ******");
+                    log("***** Estimating Harvest ******");
                     harvest_gas_estimate = 0;
                     _h.label = 21;
                 case 21:
@@ -206,25 +206,25 @@ function main() {
                     return [4 /*yield*/, estimateGas(strategyInstance.harvest(), bot.address)];
                 case 22:
                     gasPrice = (_h.sent())[0];
-                    console.log("harvest gasPrice: ", gasPrice);
+                    log("harvest gasPrice: " + gasPrice, 'harvestor-logs.log');
                     harvest_gas_estimate = GAS_BUFFER * gasPrice;
                     total_gas_estimate += harvest_gas_estimate;
-                    console.log("harvest_gas_estimate: ", harvest_gas_estimate);
-                    console.log("total_gas_estimate: ", total_gas_estimate);
+                    log("harvest_gas_estimate: " + harvest_gas_estimate, 'harvestor-logs.log');
+                    log("total_gas_estimate: " + total_gas_estimate, 'harvestor-logs.log');
                     return [3 /*break*/, 24];
                 case 23:
                     err_2 = _h.sent();
-                    console.log("[".concat(strategy.options.address, "] `harvest` estimate fails : ").concat(err_2));
+                    log("[".concat(strategy.options.address, "] `harvest` estimate fails : ").concat(err_2), 'harvestor-logs.log');
                     return [3 /*break*/, 24];
                 case 24:
                     harvestCallCost = harvest_gas_estimate * starting_gas_price;
-                    console.log("harvestCallCost ", harvestCallCost);
+                    log("harvestCallCost " + harvestCallCost, 'harvestor-logs.log');
                     return [4 /*yield*/, strategyInstance
                             .harvestTrigger(harvestCallCost.toString())
                             .call()];
                 case 25:
                     harvestTrigger = _h.sent();
-                    console.log("harvestTrigger: ", harvestTrigger);
+                    log("harvestTrigger: " + harvestTrigger, 'harvestor-logs.log');
                     tendCallCost = tend_gas_estimate * starting_gas_price;
                     return [4 /*yield*/, strategyInstance
                             .tendTrigger(tendCallCost.toString())
@@ -242,11 +242,11 @@ function main() {
                 case 29:
                     _h.sent();
                     calls_made += 1;
-                    console.log(" Harvest Triggered ");
+                    log(" Harvest Triggered ", 'harvestor-logs.log');
                     return [3 /*break*/, 31];
                 case 30:
                     err_3 = _h.sent();
-                    console.log("[".concat(strategy.options.address, "] `harvest` call fails ").concat(err_3));
+                    log("[".concat(strategy.options.address, "] `harvest` call fails ").concat(err_3), 'harvestor-logs.log');
                     return [3 /*break*/, 31];
                 case 31: return [3 /*break*/, 37];
                 case 32:
@@ -261,11 +261,11 @@ function main() {
                 case 35:
                     _h.sent();
                     calls_made += 1;
-                    console.log(" Tend Triggered ");
+                    log(" Tend Triggered ", 'harvestor-logs.log');
                     return [3 /*break*/, 37];
                 case 36:
                     err_4 = _h.sent();
-                    console.log("[".concat(strategy.options.address, "] `tend` call fails ").concat(err_4));
+                    log("[".concat(strategy.options.address, "] `tend` call fails ").concat(err_4), 'harvestor-logs.log');
                     return [3 /*break*/, 37];
                 case 37:
                     _g++;
@@ -274,19 +274,19 @@ function main() {
                 case 39:
                     botBalance = _h.sent();
                     if (botBalance < 10 * total_gas_estimate * starting_gas_price) {
-                        console.log("Need more ether please! ".concat(bot.address));
+                        log("Need more ether please! ".concat(bot.address), 'harvestor-logs.log');
                     }
                     // Wait a minute if we didn't make any calls
                     if (calls_made > 0) {
                         gas_cost = (starting_balance - botBalance) / Math.pow(10, 18);
                         num_harvests = Math.floor(botBalance / (starting_balance - botBalance));
-                        console.log("Made ".concat(calls_made, " calls, spent ").concat(gas_cost.toFixed(18), " ETH on gas."));
-                        console.log("At this rate, it'll take ".concat(num_harvests, " harvests to run out of gas."));
-                        console.log("\n");
+                        log("Made ".concat(calls_made, " calls, spent ").concat(gas_cost.toFixed(18), " ETH on gas."), 'harvestor-logs.log');
+                        log("At this rate, it'll take ".concat(num_harvests, " harvests to run out of gas."), 'harvestor-logs.log');
+                        log("\n", 'harvestor-logs.log');
                     }
                     else {
-                        console.log("We didn't make any calls");
-                        console.log("\n");
+                        log("We didn't make any calls", 'harvestor-logs.log');
+                        log("\n", 'harvestor-logs.log');
                     }
                     _h.label = 40;
                 case 40: return [2 /*return*/];
@@ -294,10 +294,10 @@ function main() {
         });
     });
 }
-main();
-/** Runs “At minute 59 past every 12th hour.”
- * (00:59:00,12:59:00, 00:59:00)
+/** Runs “At minute 0 past every 6th hour.”
+ * (06:00:00,12:00:00, 18:00:00)
  */
-// cron.schedule("59 */12 * * *", () => {
-//   main();
-// });
+cron.schedule("0 */6 * * *", function () {
+    log("Harvestor process started", 'harvestor-logs.log');
+    main();
+});

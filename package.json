@@ -4,12 +4,15 @@
   "description": "strategy harvester",
   "main": "harvester.js",
   "scripts": {
+    "start": "node harvester.js ",
+    "build": "npx tsc harvester.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.0.3",
+    "log-to-file": "^3.0.3",
     "node-cron": "^3.0.2",
     "web3": "^1.8.1"
   },
